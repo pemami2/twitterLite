@@ -1,0 +1,4 @@
+PRAGMA foreign_keys=ON;
+BEGIN TRANSACTION;
+CREATE TABLE Posts (Username text PRIMARY KEY, Message text NOT NULL, DATE INTEGER);
+COMMIT;
