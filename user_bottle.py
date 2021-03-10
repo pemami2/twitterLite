@@ -9,7 +9,7 @@ from bottle.ext import sqlite
 app = bottle.Bottle()
 plugin = bottle.ext.sqlite.Plugin(dbfile ='/db/Users.db')
 
-app.install(plugin))
+app.install(plugin)
 
 def json_error_handler(res):
     if res.content_type == 'application/json':
@@ -53,7 +53,7 @@ def createUser():
         username=data['username']  
         password=data['password']
         email=data['email']
-        row = query(db, 'INSERT INTO Users (username, email, password) VALUES (?, ?, ?);'. [username], [password], [email])
+        row = query(db, 'INSERT INTO Users (username, email, password) VALUES (?, ?, ?);', [username, password, email])
 
         if not row:
             abort(404)
