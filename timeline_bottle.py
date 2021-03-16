@@ -1,14 +1,18 @@
 #!/usr/bin/python
 
-import json
-from bottle import request, response
-from bottle import post, get, put, delete
+import sys
+import textwrap
+import logging.config
+import sqlite3
+
 import bottle
+from bottle import get, post, error, abort, request, response, HTTPResponse
+from bottle.ext import sqlite
 
-app = bottle.Bottle()
-plugin = bottle.ext.sqlite.Plugin(dbfile ='/db/Posts.db')
+app = bottle.default_app()
+plugin = bottle.ext.sqlite.Plugin(dbfile ='db/Posts.db')
 
-app.install(plugin))
+app.install(plugin)
 
 def json_error_handler(res):
     if res.content_type == 'application/json':
@@ -40,7 +44,7 @@ def execute(db, sql, args=()):
 
 
 @get('/timeline/usertimeline/<username>/')
-def getUserTimeline(username):
+def getUserTimeline(username,db):
     myPosts = query(db, 'SELECT message FROM Posts WHERE username = ? LIMIT 25;', [username])
     # list_obj=[]
 

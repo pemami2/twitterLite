@@ -6,8 +6,13 @@ from bottle import post, get, put, delete
 import bottle
 from bottle.ext import sqlite
 
-app = bottle.Bottle()
-plugin = bottle.ext.sqlite.Plugin(dbfile ='/db/Users.db')
+
+import bottle
+from bottle import get, post, error, abort, request, response, HTTPResponse
+from bottle.ext import sqlite
+
+app = bottle.default_app()
+plugin = bottle.ext.sqlite.Plugin(dbfile ='db/Users.db')
 
 app.install(plugin)
 
@@ -40,7 +45,7 @@ def execute(db, sql, args=()):
     return id
 
 @post('/users/')
-def createUser():
+def createUser(db):
     '''Handles name creation'''
     try:
         # parse input data
@@ -123,9 +128,11 @@ def deletefollower():
 
 
 @get('/users/<username>/follower')
-def getFollowers(username):
+def getFollowers(username, db):
     
-    return "hit"
+    row = query(db, 'SELECT follow FROM Following WHERE username = ?;', [username])
+
+    return {'followers' : row}
 
 if __name__ == '__main__':
     bottle.run(host = '127.0.0.1', port = 8000) 
