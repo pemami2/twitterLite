@@ -1,5 +1,11 @@
 PRAGMA foreign_keys=ON;
 BEGIN TRANSACTION;
 CREATE TABLE Users (Username text PRIMARY KEY, Password text NOT NULL, Email varchar(255) NOT NULL);
-CREATE TABLE Following (Username text NOT NULL PRIMARY KEY, Follow text, FOREIGN KEY (USERNAME) REFERENCES Users (Username));
+CREATE TABLE Following (Username text NOT NULL , Follow text NOT NULL, PRIMARY KEY(Username, Follow), FOREIGN KEY (USERNAME) REFERENCES Users (Username));
+INSERT INTO Users (username, email, password) VALUES ('pemami', 'pemami@yahoo.com', 'futbol@CR7');
+INSERT INTO Users (username, email, password) VALUES ('dumbo', 'dumbo@gmail.com', 'donut$');
+INSERT INTO Users (username, email, password) VALUES ('emi123', 'emi123@hotmail.com', 'jap$design');
+INSERT INTO Following (username, follow) VALUES ( 'pemami', 'dumbo' );
+INSERT INTO Following (username, follow) VALUES ( 'dumbo', 'emi123' );
+INSERT INTO Following (username, follow) VALUES ( 'emi123', 'pemami' );
 COMMIT;

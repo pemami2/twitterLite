@@ -47,87 +47,87 @@ def execute(db, sql, args=()):
 @post('/users/')
 def createUser(db):
     '''Handles name creation'''
+
+    data = request.json
+    posted_fields = data.keys()
+    required_fields = {'username', 'password', 'email'}
+
+    if not data or not required_fields <= posted_fields:
+        abort(400, f'Missing fields: {required_fields - posted_fields}')
+
+    username = data['username']  
+    password = data['password']
+    email = data['email']
+
     try:
-        # parse input data
-        try:
-            data = request.json()
-        except:
-            raise ValueError
-        if data is None:
-            raise ValueError
-        username=data['username']  
-        password=data['password']
-        email=data['email']
-        row = query(db, 'INSERT INTO Users (username, email, password) VALUES (?, ?, ?);', [username, password, email])
-
-        if not row:
-            abort(404)
-
-        response.status = "200 OK"
-
+        result = query(db, 'INSERT INTO Users (username, email, password) VALUES (?, ?, ?);', [username, email, password])
     except:
-        #response.headers['Content-Type'] = 'application/json'
-        #print("hi")
-        response.status = "400 invalid"
-    finally:
-        return response.status  
+        abort(500)
 
-@get('/users/checkPassword/<username>/<password>/')
-def checkPassword(username,password):
+    response.status = "200 OK"
 
-    
-    if "select * username" != password:
-        response.status = "400 Invalid" 
+    return response.status  
 
+@get('/users/checkPassword/<username>/')
+def checkPassword(username, db):
+
+    data = request.json
+
+    if not data or not {'password'} <= data.keys():
+        abort(400)
+
+    password = data['password']
+
+    try:
+        db_pass = query(db, 'SELECT password FROM Users WHERE username = ?;', [username], one=True) 
+    except:
+        abort(500)
+
+    if db_pass['Password'] == password:
+        response.status = 200
     else:
-    # return 200 Success
-        response.status = "200 Success"
-        #response.headers['Content-Type'] = 'application/json'
-    return response.status
+        response.status = 400
+        response.body = "Incorrect Password" 
+    
+    return response
 
 
-@put('/users/follower')
-def addFollower():
+@post('/users/<username>/follow/')
+def addFollower(username, db):
+    
+    data = request.json
+    
+    if not data or not {'usernameToFollow'} <= data.keys():
+        abort(400)
+
+    usernameToFollow = data['usernameToFollow']
     try:
-        # parse input data
-        try:
-            data = request.json()
-        except:
-            raise ValueError
-        if data is None:
-            raise ValueError
-        username=data['username']
-        usernameToFollow=data['usernametofollow']
-        response.status = "200 OK"
-
-
+        result = query(db, 'INSERT INTO Following (username, follow) VALUES ( ?, ? );', [username, usernameToFollow])
+        response.body = result
+        response.status = 200
     except:
-        response.status = "400 INVALID"
+        abort(500)
 
 
-    return response.status
+    return response
 
     
        
-@delete('/users/follower/<username>')
-def deletefollower():
-    try:
-        # parse input data
-        try:
-            data = request.json()
-        except:
-            raise ValueError
-        if data is None:
-            raise ValueError
-        usernameToFollow=data['usernametounfollow']
-        response.status = 200
-    except:
-        response.status = 400
+@delete('/users/<username>/follow/')
+def removeFollower(username, db):
+
+    data = request.json
+    usernameToUnfollow = data['usernameToUnfollow']
+
+  
+    result = query(db, 'DELETE FROM Following WHERE username = :username AND follow = :follow;', {'username': username, 'follow': usernameToUnfollow}, one = True)
+    response.body = result
+    response.status = 200
 
     return response.status 
 
 
-@get('/users/<username>/follower')
+@get('/users/<username>/follow/')
 def getFollowers(username, db):
     
     row = query(db, 'SELECT follow FROM Following WHERE username = ?;', [username])
