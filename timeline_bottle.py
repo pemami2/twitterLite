@@ -4,8 +4,9 @@ import sys
 import textwrap
 import logging.config
 import sqlite3
-
+import requests
 import bottle
+import json
 from bottle import get, post, error, abort, request, response, HTTPResponse
 from bottle.ext import sqlite
 
@@ -45,53 +46,65 @@ def execute(db, sql, args=()):
 
 @get('/timeline/usertimeline/<username>/')
 def getUserTimeline(username,db):
-    myPosts = query(db, 'SELECT message FROM Posts WHERE username = ? LIMIT 25;', [username])
-    # list_obj=[]
 
-    # response.headers['Content-Type'] = 'application/json'
-    # return json.dump({'timeline':str(list_obj)})
+    myPosts = query(db, 'SELECT message FROM Posts WHERE username = ? LIMIT 25;', [username])
+
     return {'posts' : myPosts}
 
     
        
 @get('/timeline/usertimeline/')
-def getPublicTimeline():
-    # user_obj=[]
-    # list_obj=[]
+def getPublicTimeline(db):
 
-    # response.headers['Content-Type'] = 'application/json'
-    # return json.dump({'timeline':str(user_obj)})
-    return "timeline"
+    posts = query(db, 'SELECT message FROM Posts LIMIT 25')
+
+    return {'posts' : posts}
 
 @get('/timeline/hometimeline/<username>/')
-def getUserTimeline(username):
+def getUserTimeline(username, db):
 
-    list_obj=[]
-
-    response.headers['Content-Type'] = 'application/json'
-    return json.dump({'timeline':str(list_obj)})
-
-
-    
-
-@post('/users/')
-def user_creation():
-    '''Handles name creation'''
     try:
-        # parse input data
-        try:
-            data = request.json()
-        except:
-            raise ValueError
-        if data is None:
-            raise ValueError
-        username=data['username']  
-        text=data['text']
-        response.status = "200 OK"
+        response = requests.get('http://127.0.0.1:8000/users/' + username + '/follow/')
+        print(response.text)
     except:
-        response.status = "400 invalid"
-    finally:
-        return response.status  
+        abort(500, 'User service unavailable')
+
+    data = json.loads(response.text) 
+    following = list()
+
+    for x in data['followers']:
+        following.append(x.get('Follow'))
+
+    following_tuple = tuple(following)
+
+    try:
+        posts = query(db, 'SELECT message FROM Posts WHERE Username IN {} LIMIT 25;'.format(following_tuple))
+    except:
+        abort(500)
+
+    return {'Posts': posts}
+
+@post('/timeline/')
+def user_creation(db):
+    '''Handles name creation'''
+
+    data = request.json
+
+    if not data or not {'username', 'message'} <= data.keys():
+        abort(400, 'Missing fields')
+
+    username = data['username']  
+    message = data['message']
+
+    try: 
+        result = query(db, 'INSERT INTO Posts (username, message) VALUES (:username, :message);', {'username': username, 'message': message})
+        response.body = result
+        response.status = 200
+    except:
+        abort(500)
+
+    return response.status  
+
 
 if __name__ == '__main__':
     bottle.run(host = '127.0.0.1', port = 8001) 
