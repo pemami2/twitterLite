@@ -1,14 +1,8 @@
 #!/usr/bin/python
 
 import json
-from bottle import request, response
-from bottle import post, get, put, delete
 import bottle
-from bottle.ext import sqlite
-
-
-import bottle
-from bottle import get, post, error, abort, request, response, HTTPResponse
+from bottle import get, post, delete, error, abort, request, response, HTTPResponse
 from bottle.ext import sqlite
 
 app = bottle.default_app()
@@ -36,24 +30,22 @@ def query(db, sql, args=(), one=False):
 
     return (rv[0] if rv else None) if one else rv
 
-
-def execute(db, sql, args=()):
-    cur = db.execute(sql, args)
-    id = cur.lastrowid
-    cur.close()
-
-    return id
+def missingFields(required, posted):
+    if not required <= posted:
+        return f'Missing fields: {required - posted}'
+    
+    else:
+        return false
 
 @post('/users/')
 def createUser(db):
     '''Handles name creation'''
 
     data = request.json
-    posted_fields = data.keys()
-    required_fields = {'username', 'password', 'email'}
+    missing = missingFields({'username', 'password', 'email'}, data.keys())
 
-    if not data or not required_fields <= posted_fields:
-        abort(400, f'Missing fields: {required_fields - posted_fields}')
+    if missing:
+        abort(400, missing)
 
     username = data['username']  
     password = data['password']
@@ -72,9 +64,10 @@ def createUser(db):
 def checkPassword(username, db):
 
     data = request.json
+    missing = missingFields({ 'password'}, data.keys())
 
-    if not data or not {'password'} <= data.keys():
-        abort(400)
+    if missing:
+        abort(400, missing)
 
     password = data['password']
 
@@ -96,9 +89,10 @@ def checkPassword(username, db):
 def addFollower(username, db):
     
     data = request.json
-    
-    if not data or not {'usernameToFollow'} <= data.keys():
-        abort(400)
+    missing = missingFields({'usernameToFollow'}, data.keys())
+
+    if missing:
+        abort(400, missing)
 
     usernameToFollow = data['usernameToFollow']
     try:
@@ -117,9 +111,12 @@ def addFollower(username, db):
 def removeFollower(username, db):
 
     data = request.json
-    usernameToUnfollow = data['usernameToUnfollow']
+    missing = missingFields({'usernameToUnfollow'}, data.keys())
 
-  
+    if missing:
+        abort(400, missing)
+
+    usernameToUnfollow = data['usernameToUnfollow']  
     result = query(db, 'DELETE FROM Following WHERE username = :username AND follow = :follow;', {'username': username, 'follow': usernameToUnfollow}, one = True)
     response.body = result
     response.status = 200

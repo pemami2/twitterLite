@@ -1,8 +1,5 @@
 #!/usr/bin/python
 
-import sys
-import textwrap
-import logging.config
 import sqlite3
 import requests
 import bottle
@@ -35,32 +32,30 @@ def query(db, sql, args=(), one=False):
 
     return (rv[0] if rv else None) if one else rv
 
+def missingFields(required, posted):
+    if not required <= posted:
+        return f'Missing fields: {required - posted}'
+    
+    else:
+        return false
 
-def execute(db, sql, args=()):
-    cur = db.execute(sql, args)
-    id = cur.lastrowid
-    cur.close()
 
-    return id
-
-
-@get('/timeline/usertimeline/<username>/')
+@get('/timeline/user/<username>/')
 def getUserTimeline(username,db):
-
     myPosts = query(db, 'SELECT message FROM Posts WHERE username = ? LIMIT 25;', [username])
 
     return {'posts' : myPosts}
 
     
        
-@get('/timeline/usertimeline/')
+@get('/timeline/')
 def getPublicTimeline(db):
 
-    posts = query(db, 'SELECT message FROM Posts LIMIT 25')
+    posts = query(db, 'SELECT username, message FROM Posts LIMIT 25')
 
     return {'posts' : posts}
 
-@get('/timeline/hometimeline/<username>/')
+@get('/timeline/home/<username>/')
 def getUserTimeline(username, db):
 
     try:
@@ -75,12 +70,13 @@ def getUserTimeline(username, db):
     for x in data['followers']:
         following.append(x.get('Follow'))
 
-    following_tuple = tuple(following)
+    if len(following) == 1:
+        posts = query(db, 'SELECT username, message FROM Posts WHERE Username = ? LIMIT 25;', [following[0]])
 
-    try:
-        posts = query(db, 'SELECT message FROM Posts WHERE Username IN {} LIMIT 25;'.format(following_tuple))
-    except:
-        abort(500)
+    else:
+        following_tuple = tuple(following)
+        posts = query(db, 'SELECT username, message FROM Posts WHERE Username IN {} LIMIT 25;'.format(following_tuple))
+
 
     return {'Posts': posts}
 
@@ -89,15 +85,16 @@ def user_creation(db):
     '''Handles name creation'''
 
     data = request.json
+    missing = missingFields({'username', 'message'}, data.keys())
 
-    if not data or not {'username', 'message'} <= data.keys():
-        abort(400, 'Missing fields')
+    if missing:
+        abort(400, missing)
 
     username = data['username']  
     message = data['message']
 
     try: 
-        result = query(db, 'INSERT INTO Posts (username, message) VALUES (:username, :message);', {'username': username, 'message': message})
+        result = query(db, 'INSERT INTO Posts (username, message) VALUES (?, ?);', [username, message])
         response.body = result
         response.status = 200
     except:
