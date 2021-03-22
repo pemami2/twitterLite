@@ -37,7 +37,7 @@ def missingFields(required, posted):
         return f'Missing fields: {required - posted}'
     
     else:
-        return false
+        return False
 
 
 @get('/timeline/user/<username>/')
@@ -85,7 +85,13 @@ def user_creation(db):
     '''Handles name creation'''
 
     data = request.json
-    missing = missingFields({'username', 'message'}, data.keys())
+
+    if data is not None:
+        keys = data.keys()
+    else:
+        keys = set()
+
+    missing = missingFields({'username', 'message'}, keys)
 
     if missing:
         abort(400, missing)

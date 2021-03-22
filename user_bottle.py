@@ -35,7 +35,7 @@ def missingFields(required, posted):
         return f'Missing fields: {required - posted}'
     
     else:
-        return false
+        return False
 
 @post('/users/')
 def createUser(db):
@@ -60,11 +60,17 @@ def createUser(db):
 
     return response.status  
 
-@get('/users/checkPassword/<username>/')
+@post('/users/checkPassword/<username>/')
 def checkPassword(username, db):
 
     data = request.json
-    missing = missingFields({ 'password'}, data.keys())
+
+    if data is not None:
+        keys = data.keys()
+    else:
+        keys = set()
+
+    missing = missingFields({ 'password'}, keys)
 
     if missing:
         abort(400, missing)
@@ -89,7 +95,13 @@ def checkPassword(username, db):
 def addFollower(username, db):
     
     data = request.json
-    missing = missingFields({'usernameToFollow'}, data.keys())
+
+    if data is not None:
+        keys = data.keys()
+    else:
+        keys = set()
+
+    missing = missingFields({'usernameToFollow'}, keys)
 
     if missing:
         abort(400, missing)
@@ -111,7 +123,13 @@ def addFollower(username, db):
 def removeFollower(username, db):
 
     data = request.json
-    missing = missingFields({'usernameToUnfollow'}, data.keys())
+
+    if data is not None:
+        keys = data.keys()
+    else:
+        keys = set()
+
+    missing = missingFields({'usernameToUnfollow'}, keys)
 
     if missing:
         abort(400, missing)
