@@ -49,7 +49,7 @@ The application is built on the Python Bottle framework alongside a SQLite datab
 Once you have downloaded the repository along with its dependencies, navigate to the project's root directory in your CL and enter `foreman start`
 The response should look something like this:
 
-![picture](Screenshots/Post.PNG)
+![picture](Screenshots/start.PNG)
 
 As you can see, foreman will run the services on your localhost ports 5000 & 5100 by default, but you can specify different ports in the CL arguement if this presents an issue
 
