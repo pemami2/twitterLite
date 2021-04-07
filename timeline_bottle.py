@@ -1,11 +1,20 @@
 #!/usr/bin/python
 
+import sys
+import textwrap
+import logging.config
 import sqlite3
 import requests
 import bottle
 import json
 from bottle import get, post, error, abort, request, response, HTTPResponse
 from bottle.ext import sqlite
+
+if not sys.warnoptions:
+    import warnings
+    for warning in [DeprecationWarning, ResourceWarning]:
+        warnings.simplefilter('ignore', warning)
+
 
 app = bottle.default_app()
 plugin = bottle.ext.sqlite.Plugin(dbfile ='db/Posts.db')
@@ -31,6 +40,7 @@ def query(db, sql, args=(), one=False):
     cur.close()
 
     return (rv[0] if rv else None) if one else rv
+       
 
 def missingFields(required, posted):
     if not required <= posted:
@@ -58,11 +68,10 @@ def getPublicTimeline(db):
 @get('/timeline/home/<username>/')
 def getUserTimeline(username, db):
 
-    try:
-        response = requests.get('http://127.0.0.1:8000/users/' + username + '/follow/')
-        print(response.text)
-    except:
-        abort(500, 'User service unavailable')
+    
+    response = requests.get('http://localhost:5000/users/' + username + '/follow/')
+    print(response.text)
+    
 
     data = json.loads(response.text) 
     following = list()
@@ -109,6 +118,6 @@ def user_creation(db):
     return response.status  
 
 
-if __name__ == '__main__':
-    bottle.run(host = '127.0.0.1', port = 8001) 
+#if __name__ == '__main__':
+#    bottle.run(host = 'locahost', port = 8001) 
     

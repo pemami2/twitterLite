@@ -1,9 +1,18 @@
 #!/usr/bin/python
 
-import json
+import sys
+import textwrap
+import logging.config
+import sqlite3
 import bottle
 from bottle import get, post, delete, error, abort, request, response, HTTPResponse
 from bottle.ext import sqlite
+
+if not sys.warnoptions:
+    import warnings
+    for warning in [DeprecationWarning, ResourceWarning]:
+        warnings.simplefilter('ignore', warning)
+
 
 app = bottle.default_app()
 plugin = bottle.ext.sqlite.Plugin(dbfile ='db/Users.db')
@@ -29,7 +38,7 @@ def query(db, sql, args=(), one=False):
     cur.close()
 
     return (rv[0] if rv else None) if one else rv
-
+    
 def missingFields(required, posted):
     if not required <= posted:
         return f'Missing fields: {required - posted}'
@@ -149,6 +158,6 @@ def getFollowers(username, db):
 
     return {'followers' : row}
 
-if __name__ == '__main__':
-    bottle.run(host = '127.0.0.1', port = 8000) 
+#if __name__ == '__main__':
+ #   bottle.run(host = 'localhost', port = 8000) 
     
