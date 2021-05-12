@@ -52,29 +52,17 @@ def missingFields(required, posted):
     else:
         return False
 
-def createPost(db, data):
-
-    if data is not None:
-        keys = data.keys()
-    else:
-        keys = set()
-
-    missing = missingFields({'username', 'message'}, keys)
-
-    if missing:
-        abort(400, missing)
+def createPost(data):
 
     username = data['username']
     message = data['message']
+    con = sqlite3.connect('db/Posts.db')
+    cur = con.cursor()
 
-    try:
-        result = query(db, 'INSERT INTO Posts (username, message) VALUES (?, ?);', [username, message])
-        response.body = result
-        response.status = 200
-    except:
-        abort(500)
-
-    return response.status
+    cur.execute('INSERT INTO Posts (username, message) VALUES (?, ?);', [username, message])
+    con.commit()
+    con.close()
+    response.status = 200
 
 def countHashtags(message):
     r = Redis()
@@ -86,13 +74,9 @@ def countHashtags(message):
 
     for tag in hashtags:
         r.zincrby("hashtags", hashtags[tag], tag)
-    
-    response.status = 200
-
-    return response.status
 
 @get('/timeline/user/<username>/')
-def getUserTimeline(username,db):
+def getUserTimeline(db, username):
     myPosts = query(db, 'SELECT message FROM Posts WHERE username = ? ORDER BY id DESC LIMIT 25;', [username])
 
     return {'posts' : myPosts}
@@ -145,8 +129,8 @@ def postQueue(db):
     if missing:
         abort(400, missing)
     
-    publish_result = publish.enqueue(createPost(db, data))
-    trending_result = trending.enqueue(countHashtags(data['message']))
+    publish_result = publish.enqueue(createPost, data)
+    trending_result = trending.enqueue(countHashtags, data['message'])
     publishID = str(publish_result.id)
     trendingID = str(trending_result.id)
     publish_status = Job.fetch(publish_result.id, connection=conn)
