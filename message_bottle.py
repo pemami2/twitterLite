@@ -17,10 +17,6 @@ dynamodb = boto3.resource('dynamodb',
     aws_access_key_id='fakeMyKeyId',
     aws_secret_access_key='fakeSecretAccessKey')
 
-# print('hello')
-# print(list(dynamodb.tables.all()))
-# print(dynamodb.Table("Messages"))
-
 table = dynamodb.Table('Messages')
 
 def missingFields(required, posted):
@@ -43,8 +39,6 @@ def json_error_handler(res):
 def sendDirectMessage():
     data = request.json
     missing = missingFields({'to', 'from', 'message'}, data.keys())
-    print(list(dynamodb.tables.all()))
-    print(table)
 
     if missing:
         abort(400, missing)
@@ -52,8 +46,18 @@ def sendDirectMessage():
     To = data['to']  
     From = data['from']
     Message = data['message'] 
-    QuickReplies = data.get('quickReplies')
-    Time = int(time.time())
+    QuickReplies = (data.get('quickReplies'))
+    Time = data['time'] = int(time.time())
+
+    if QuickReplies is None:
+        QuickReplies = []
+    elif not isinstance(QuickReplies, list):
+        abort(400, "Incorrect quick replies format")
+
+    QR = {'L': []}
+
+    for r in QuickReplies:
+        QR['L'].append({'S' : str(r)})
 
     try:
         table.put_item(
@@ -62,21 +66,14 @@ def sendDirectMessage():
                 "Time_From": str(Time) + From,
                 'From' : From,
                 'Time' : Time,
-                'Message': {
-                    'S' : Message
-                },
-                'QuickReplies': {
-                    'SS' : QuickReplies
-                },
-                'Reply': {
-                    'L' : []
-                }
+                'Message': Message,
+                'QuickReplies': QR,
             }
         )
     except:
         return "database error"
 
-    return 'success'
+    return {'success': data}
 
 
 
@@ -84,8 +81,6 @@ def sendDirectMessage():
 def replyToDirectMessage(ID):
 
     key = ID.split("_")
-    print(key[0])
-    print(key[1])
     data = request.json
     missing = missingFields({'message'}, data.keys())
 
@@ -94,16 +89,9 @@ def replyToDirectMessage(ID):
     
     # quick reply
     if isinstance(data['message'], int):
-        response = table.get_item(
-            Key={
-                'To': key[0],
-                'Time_From': key[1]
-            }
-        )
-        replies = response['Item'].get('QuickReplies')
-        reply = replies[data['message']]
+        reply = {'N' : str(data['message'])}
     else:
-        reply = data['message']
+        reply = {'S' : data['message']}
 
 
     table.update_item(
@@ -111,25 +99,29 @@ def replyToDirectMessage(ID):
             'To': key[0],
             'Time_From': key[1]
         },
-        UpdateExpression='ADD Reply :val1',
+        UpdateExpression='SET Reply = list_append(if_not_exists(Reply, :empty_list), :val1)',
         ExpressionAttributeValues={
-            ':val1': {reply}
+            ':val1': [reply], ':empty_list': []
         }
     )
 
-    return 'success'
+    return {'success': [{'messageID': ID}, {'reply': reply}]}
 
 
 @get('/messages/<username>/')
 def listDirectMessagesFor(username):
-    
-    response = table.query(
-        KeyConditionExpression=Key('To').eq(username)
-    )
+    try:
+        response = table.query(
+            KeyConditionExpression=Key('To').eq(username)
+        )
+    except:
+        abort(500, "Internal Server Error")
+        
     items = response['Items']
+
     for x in items:
-        if x.get('Reply') is not None:
-            del x['Reply']
+        del x['Time_From']
+        del x['To']
 
     return {'response' : items}
 
@@ -139,16 +131,40 @@ def listDirectMessagesFor(username):
 def listRepliesTo(ID):
     key = ID.split("_")
 
-    response = table.get_item(
-        Key={
-            'To': key[0],
-            'Time_From': key[1]
-        }
-    )
-    items = list(response['Item'].get('Reply'))
+    try:
+        response = table.get_item(
+            Key={
+                'To': key[0],
+                'Time_From': key[1]
+            }
+        )
+    except:
+        abort(500, "Internal Server Error")
 
-    return {'response' : items}
+    replies = response['Item']['Reply']
+    data = []
+
+    for i in range(len(replies)):
+        reply = replies[i]
+
+        if 'N' in reply.keys():
+            QR = int(reply['N'])
+            qRep = response['Item']['QuickReplies']['L']
+
+            if QR < len(qRep):
+                data.append( qRep[int(reply['N'])])
+            else:
+                abort(400, "quickReply does not exist")
+
+        elif 'S' in reply.keys():
+            data.append(reply['S'])
+
+        else: 
+            abort(500, "Server Error")
 
 
-if __name__ == '__main__':
-    bottle.run(host = 'localhost', port = 5000) 
+    return {'response' : data}
+
+
+# if __name__ == '__main__':
+#     bottle.run(host = 'localhost', port = 5000) 
